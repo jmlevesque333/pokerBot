@@ -1,6 +1,8 @@
 import discord
 import random
+import printCard
 from random import shuffle
+from collections import defaultdict
 
 description = '''An example bot to showcase the discord.ext.commands extension
 module.
@@ -12,7 +14,7 @@ token = 'MzYwNzczMzA5MjA3NDEyNzQ3.DKab4A.lFqitkifVbqtioZi6Yj6Y9JtQcU'
 
 isGame = 0
 players = {}
-hands = {}
+hands = defaultdict(list)
 pokerRole = None
 pokerChannel = None
 cardList = [('Hearts', '1'),('Hearts', '2'),('Hearts', '3'),('Hearts', '4'),('Hearts', '5'),
@@ -31,7 +33,17 @@ cardList = [('Hearts', '1'),('Hearts', '2'),('Hearts', '3'),('Hearts', '4'),('He
 def deal():
     global cardList
     for player in players:
-        hands[player] = cardList.pop([0])
+        hands[player].append(cardList.pop([0]))
+        printedHand = printHand(hands[player])
+        await bot.send_message(player,printedHand)
+
+def flip():
+    global cardList
+    cardFlipped = cardList.pop([1])
+    for player in players:
+        hands[player].append(cardFlipped)
+        printedHand = printHand(hands[player])
+        await bot.send_message(player,printedHand)
 
 @bot.event
 async def on_ready():
@@ -81,9 +93,11 @@ async def on_message(message):
 
             if command == 'startPoker':
                 if isGame:
-                    if len(players) > 1:
-                        shuffle(cardList)
-                    else:
+                    #if len(players) > 1:
+                    shuffle(cardList)
+                    deal()
+                    deal()
+                    #else:
                         await bot.send_message(message.channel,'Not enough players in the lobby.\nUse the command viewPlayers to see the lobby.\nUse the command join to add yourself to the lobby.'
                 else:
                     await bot.send_message(message.channel, 'Game has not been initiated yet.')
