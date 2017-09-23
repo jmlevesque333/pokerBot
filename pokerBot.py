@@ -1,6 +1,6 @@
 import discord
 import random
-import printCard
+from printCard import *
 from random import shuffle
 from collections import defaultdict
 
@@ -30,16 +30,16 @@ cardList = [('Hearts', '1'),('Hearts', '2'),('Hearts', '3'),('Hearts', '4'),('He
             ('Clubs', '6'),('Clubs', '7'),('Clubs', '8'),('Clubs', '9'),('Clubs', '10'),
             ('Clubs', 'Jack'),('Clubs', 'Queen'),('Clubs', 'King'),('Clubs', 'Ace')]
 
-def deal():
+async def deal():
     global cardList
     for player in players:
-        hands[player].append(cardList.pop([0]))
+        hands[player].append(cardList.pop(0))
         printedHand = printHand(hands[player])
-        await bot.send_message(player,printedHand)
+        await bot.send_message(player, printedHand)
 
-def flip():
+async def flip():
     global cardList
-    cardFlipped = cardList.pop([1])
+    cardFlipped = cardList.pop(0)
     for player in players:
         hands[player].append(cardFlipped)
         printedHand = printHand(hands[player])
@@ -59,11 +59,16 @@ async def on_message(message):
     global pokerRole
     global pokerChannel
     global hands
+    message.content.encode('utf-8')
+    msg = message.content
     if message.author.id != bot.user.id:
+        print(msg[0])
+        print(msg)
         if message.content[0] == command_prefix:
             command = message.content[1:]
 
             if command == 'playPoker':
+                await bot.send_message(message.channel,u"\u02E5")
                 if isGame:
                     await bot.send_message(message.channel,'Games already bing played. Game can be restarted with command restart.')
                 else:
@@ -82,6 +87,9 @@ async def on_message(message):
                     isGame = 0
                     await bot.delete_channel(pokerChannel)
                     await bot.delete_role(message.server, pokerRole)
+                    await bot.send_message(message.channel, "Game has been stopped.")
+                else:
+                    await bot.send_message(message.channel, "No game in progress.")
 
             if command == 'join':
                 if isGame:
@@ -95,10 +103,12 @@ async def on_message(message):
                 if isGame:
                     #if len(players) > 1:
                     shuffle(cardList)
-                    deal()
-                    deal()
+                    await deal()
+                    await deal()
                     #else:
-                        await bot.send_message(message.channel,'Not enough players in the lobby.\nUse the command viewPlayers to see the lobby.\nUse the command join to add yourself to the lobby.'
+                        #await bot.send_message(message.channel, 'Not enough players in the lobby.' + '\n' +
+                        #                                        'Use the command viewPlayers to see the lobby.' + '\n' +
+                        #                                        'Use the command join to add yourself to the lobby.')
                 else:
                     await bot.send_message(message.channel, 'Game has not been initiated yet.')
 
