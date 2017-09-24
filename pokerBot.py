@@ -1,5 +1,8 @@
 import discord
 import random
+import re
+import math
+import time
 from printCard import *
 from random import shuffle
 from collections import defaultdict
@@ -13,37 +16,83 @@ command_prefix = '?'
 token = 'MzYwNzczMzA5MjA3NDEyNzQ3.DKab4A.lFqitkifVbqtioZi6Yj6Y9JtQcU'
 
 isGame = 0
+isRound = 0
+voteInProgress = 0
 players = {}
 hands = defaultdict(list)
+flop = []
 pokerRole = None
 pokerChannel = None
-cardList = [('Hearts', '1'),('Hearts', '2'),('Hearts', '3'),('Hearts', '4'),('Hearts', '5'),
-            ('Hearts', '6'),('Hearts', '7'),('Hearts', '8'),('Hearts', '9'),('Hearts', '10'),
-            ('Hearts', 'Jack'),('Hearts', 'Queen'),('Hearts', 'King'),('Hearts', 'Ace'),
-            ('Spades', '1'),('Spades', '2'),('Spades', '3'),('Spades', '4'),('Spades', '5'),
+bigBlind = 0
+smallBlind = 0
+result = 0
+cardList = [('Hearts', '2'),('Hearts', '3'),('Hearts', '4'),('Hearts', '5'),('Hearts', '6'),
+            ('Hearts', '7'),('Hearts', '8'),('Hearts', '9'),('Hearts', '10'),('Hearts', 'Jack'),
+            ('Hearts', 'Queen'),('Hearts', 'King'),('Hearts', 'Ace'),
+            ('Spades', '2'),('Spades', '3'),('Spades', '4'),('Spades', '5'),
             ('Spades', '6'),('Spades', '7'),('Spades', '8'),('Spades', '9'),('Spades', '10'),
             ('Spades', 'Jack'),('Spades', 'Queen'),('Spades', 'King'),('Spades', 'Ace'),
-            ('Diamonds', '1'),('Diamonds', '2'),('Diamonds', '3'),('Diamonds', '4'),('Diamonds', '5'),
+            ('Diamonds', '2'),('Diamonds', '3'),('Diamonds', '4'),('Diamonds', '5'),
             ('Diamonds', '6'),('Diamonds', '7'),('Diamonds', '8'),('Diamonds', '9'),('Diamonds', '10'),
             ('Diamonds', 'Jack'),('Diamonds', 'Queen'),('Diamonds', 'King'),('Diamonds', 'Ace'),
-            ('Clubs', '1'),('Clubs', '2'),('Clubs', '3'),('Clubs', '4'),('Clubs', '5'),
-            ('Clubs', '6'),('Clubs', '7'),('Clubs', '8'),('Clubs', '9'),('Clubs', '10'),
-            ('Clubs', 'Jack'),('Clubs', 'Queen'),('Clubs', 'King'),('Clubs', 'Ace')]
+            ('Clubs', '2'),('Clubs', '3'),('Clubs', '4'),('Clubs', '5'),('Clubs', '6'),
+            ('Clubs', '7'),('Clubs', '8'),('Clubs', '9'),('Clubs', '10'),('Clubs', 'Jack'),
+            ('Clubs', 'Queen'),('Clubs', 'King'),('Clubs', 'Ace')]
 
-async def deal():
+async def showHand(player,printedHand):
+    handString = ''
+    for printedLine in printedHand:
+        handString += printedLine + '\n'
+    await bot.send_message(player, handString)
+
+async def showFlop(player,printedFlop):
+    flopString = ''
+    for printedLine in printedFlop:
+        flopString += printedLine + '\n'
+    await bot.send_message(player, "*This is the board*\n" + flopString)
+
+async def playRound():
+    global bigBlind
+    global smallBlind
+    #TODO
+
+async def deal(isFirstCard):
     global cardList
     for player in players:
         hands[player].append(cardList.pop(0))
         printedHand = printHand(hands[player])
-        await bot.send_message(player, printedHand)
+        if not isFirstCard:
+            await showHand(player,printedHand)
 
-async def flip():
+async def flip(isTwoFirstCard):
     global cardList
     cardFlipped = cardList.pop(0)
+    flop.append(cardFlipped)
+    printedFlop= printHand(flop)
+    if not isTwoFirstCard:
+        for player in players:
+            await showFlop(player,printedFlop)
+
+'''async def vote():
+    result = 0
+    print(players)
+    print(len(players))
     for player in players:
-        hands[player].append(cardFlipped)
-        printedHand = printHand(hands[player])
-        await bot.send_message(player,printedHand)
+        reaction = await bot.wait_for_reaction([':thumbsup:',':thumbsdown:'],user=player,timeout = 30)
+        print(reaction)
+        if reaction == ':thumbsup:':
+            print('thumbsup')
+            result += 1
+        if reaction == ':thumbsdown:':
+            print(thumbsdown)
+            result -= 1
+    print(result)
+    return result'''
+
+async def voting(vote, user):
+    global result
+    result += vote
+    print(result)
 
 @bot.event
 async def on_ready():
@@ -53,22 +102,30 @@ async def on_ready():
     print('------')
 
 @bot.event
+async def on_reaction_add(reaction,user):
+    global voteInProgress
+    if voteInProgress:
+        if reaction.emoji == u"\U0001F44D":
+            await voting(1, user)
+        elif reaction.emoji.name == u"\U0001F44E":
+            await voting(0, user)
+
+@bot.event
 async def on_message(message):
     global isGame
+    global isRound
     global players
     global pokerRole
     global pokerChannel
     global hands
-    message.content.encode('utf-8')
-    msg = message.content
+    global bigBlind
+    global smallBlind
+    global voteInProgress
     if message.author.id != bot.user.id:
-        print(msg[0])
-        print(msg)
         if message.content[0] == command_prefix:
             command = message.content[1:]
 
             if command == 'playPoker':
-                await bot.send_message(message.channel,u"\u02E5")
                 if isGame:
                     await bot.send_message(message.channel,'Games already bing played. Game can be restarted with command restart.')
                 else:
@@ -93,24 +150,46 @@ async def on_message(message):
 
             if command == 'join':
                 if isGame:
-                    players[message.author] = 3000
-                    await bot.add_roles(message.author, pokerRole)
-                    await bot.send_message(message.channel,'You have been added to the game!')
+                    if not isRound:
+                        players[message.author] = 3000
+                        await bot.add_roles(message.author, pokerRole)
+                        await bot.send_message(message.channel,'You have been added to the game!')
+                    else:
+                        await bot.send_message(message.channel,'Round in progress, but you can still join in the next one!')
                 else:
                     await bot.send_message(message.channel,'Game has not been initiated yet, use command playPoker to start.')
 
             if command == 'startPoker':
                 if isGame:
-                    #if len(players) > 1:
-                    shuffle(cardList)
-                    await deal()
-                    await deal()
-                    #else:
-                        #await bot.send_message(message.channel, 'Not enough players in the lobby.' + '\n' +
-                        #                                        'Use the command viewPlayers to see the lobby.' + '\n' +
-                        #                                        'Use the command join to add yourself to the lobby.')
+                    if not isRound:
+                        #if len(players) > 1:
+                        shuffle(cardList)
+                        isRound = 1 
+                        await playRound()
+                        #else:
+                            #await bot.send_message(message.channel, 'Not enough players in the lobby.' + '\n' +
+                            #                                        'Use the command viewPlayers to see the lobby.' + '\n' +
+                            #                                        'Use the command join to add yourself to the lobby.')
+                    else:
+                        await bot.send_message(message.channel,'Round already in progress.')
                 else:
                     await bot.send_message(message.channel, 'Game has not been initiated yet.')
+
+            if re.search(r'setBlind [0-9]+$',command):
+                if isGame:
+                    if not voteInProgress:
+                        voteInProgress = 1
+                        start = time.time()
+                        while(time.time() - start < 30):
+                            #TODO
+                        if result > 0:
+                            bigBlind = re.search(r'\d+$',command)
+                            smallBlind = math.floor(bigBlind/2)
+                            await bot.send_message(message.channel, 'Big blind has been set to ' + srt(bigBlind) + ' and small blind has been set to ' + str(smallBlind) + '.')
+                        else:
+                            await bot.send_message(message.channel, 'Vote has failed')
+                    else:
+                        await bot.send_message(message.channel, 'A vote is already in progress')
 
             if command == 'viewPlayers':
                 if isGame:
