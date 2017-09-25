@@ -17,6 +17,7 @@ token = 'MzYwNzczMzA5MjA3NDEyNzQ3.DKab4A.lFqitkifVbqtioZi6Yj6Y9JtQcU'
 
 isGame = 0
 isRound = 0
+nextRound = 0
 voteInProgress = 0
 bettingInProgress = 0
 playerTurn = 1
@@ -115,6 +116,7 @@ async def on_ready():
 async def on_message(message):
     global isGame
     global isRound
+    global nextRound
     global players
     global playerAmount
     global pot
@@ -203,7 +205,11 @@ async def on_message(message):
                                 players[message.author] - raisedAmount
                                 playerAmount[message.author] += raisedAmount
                                 pot += raisedAmount
-                                playerTurn += playerTurn % len(table)
+                                if all( value == max(playerAmount) for value in playerAmount.values()):
+                                    bettingInProgress = 0
+                                    nextRound = 1
+                                else:
+                                    playerTurn += playerTurn % len(table)
                             else:
                                 await bot.send_message(message.channel, 'Not a raise')
                         else:
@@ -213,6 +219,25 @@ async def on_message(message):
                 if bettingInProgress:
                     if message.author == table[playerTurn]:
                         if playerAmount[message.author] == max(playerAmount):
+                            playerTurn += playerTurn % len(table)
+
+            if command = 'call':
+                if bettingInProgress:
+                    if message.author == table[playerTurn]:
+                        raisedAmount = max(playerAmount) - playerAmount[message.author]
+                        if raisedAmount <= players[message.author]:
+                            players[message.author] - raisedAmount
+                            playerAmount[message.author] += raisedAmount
+                            pot += raisedAmount
+                            if all( value == max(playerAmount) for value in playerAmount.values()):
+                                    bettingInProgress = 0
+                                    nextRound = 1
+                            else:
+                                playerTurn += playerTurn % len(table)
+                        else:
+                            await bot.send_message(message.channel, 'Your too poor for that')                       
+
+            if command == 'nextRound':
 
 
             if command == 'viewPlayers':
