@@ -54,6 +54,14 @@ async def showHand(player,printedHand):
         handString += printedLine + '\n'
     await bot.send_message(player, handString)
 
+async def showHands():
+    for player in table:
+        printedHand = printHand(hands[player])
+        handString = str(player.display_name) + "'s hand\n"
+        for printedLine in printedHand:
+            handString += printedLine + '\n'
+        await bot.send_message(pokerChannel, handString)
+
 async def showFlop(player,printedFlop):
     flopString = ''
     for printedLine in printedFlop:
@@ -88,17 +96,18 @@ async def playPokerRound(roundNumber):
         deal(1)
         deal(0)
         bettingInProgress = 1
-    elif: roundNumber == 1:
+    elif roundNumber == 1:
         flip(1)
         flip(1)
         flip(0)
         bettingInProgress = 1
-    elif: roundNumber == 2:
+    elif roundNumber == 2:
         flip(0)
         bettingInProgress = 1
-    elif: roundNumber == 3:
+    elif roundNumber == 3:
         flip(0)
         bettingInProgress = 1
+    elif roundNumber == 4:
 
 async def deal(isFirstCard):
     global cardList
@@ -259,7 +268,7 @@ async def on_message(message):
                             else:
                                 playerTurn += playerTurn % len(table)
             #NOTTESTED
-            if command = 'call':
+            if command == 'call':
                 if bettingInProgress:
                     if message.author == table[playerTurn]:
                         raisedAmount = max(playerAmount) - playerAmount[message.author]
@@ -274,6 +283,18 @@ async def on_message(message):
                             else:
                                 playerTurn += playerTurn % len(table)
                         else:
-                            await bot.send_message(message.channel, 'Your too poor for that')                       
+                            await bot.send_message(message.channel, 'Your too poor for that')      
+
+            if command == 'fold':
+                if bettingInProgress:
+                    if message.author == table[playerTurn]:
+                        del table[player]
+                        del hands[player]
+                        if all( value == max(playerAmount) for value in playerAmount.values()):
+                            bettingInProgress = 0
+                            nextRound = 1
+                            playerTurn = table[bigBlindPos]
+                        else:
+                            playerTurn += playerTurn % len(table)
 
 bot.run(token)
