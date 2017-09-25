@@ -75,17 +75,30 @@ async def setupPoker():
         else:
             blindNotSet = 0 
 
-async def playPokerRound():
+async def playPokerRound(roundNumber):
     global bigBlind
     global smallBlind
     global table
     global playerAmount
-    players[table[bigBlindPos]] - bigBlind
-    playerAmount[table[bigBlindPos]] = bigBlind
-    players[table[smallBlindPos]] - smallBlind
-    playerAmount[table[smallBlindPos] - smallBlind]
-    deal(1)
-    deal(0)
+    if roundNumber == 0:
+        players[table[bigBlindPos]] - bigBlind
+        playerAmount[table[bigBlindPos]] = bigBlind
+        players[table[smallBlindPos]] - smallBlind
+        playerAmount[table[smallBlindPos] - smallBlind]
+        deal(1)
+        deal(0)
+        bettingInProgress = 1
+    elif: roundNumber == 1:
+        flip(1)
+        flip(1)
+        flip(0)
+        bettingInProgress = 1
+    elif: roundNumber == 2:
+        flip(0)
+        bettingInProgress = 1
+    elif: roundNumber == 3:
+        flip(0)
+        bettingInProgress = 1
 
 async def deal(isFirstCard):
     global cardList
@@ -180,6 +193,24 @@ async def on_message(message):
                 else:
                     await bot.send_message(message.channel, 'Game has not been initiated yet.')
 
+            if command == 'viewPlayers':
+                if isGame:
+                    sendPlayers = ''
+                    for player,money in players.items():
+                        sendPlayers = sendPlayers + player.display_name + ' ' + str(money) + '\n'
+                    await bot.send_message(message.channel,sendPlayers)
+                else:
+                    await bot.send_message(message.channel,'Game has not been started, use command playPoker to start.')
+            #NOTTESTED
+            if command == 'nextRound':
+                if nextRound == 1:
+                    if len(flop) < 3:
+                        playPokerRound(1)
+                    if len(flop) < 4:
+                        playPokerRound(2)
+                    if len(flop) < 5:
+                        playPokerRound(3)
+            #NOTTESTED
             if re.search(r'setBlind [0-9]+$',command):
                 if isGame:
                     if not voteInProgress:
@@ -195,7 +226,8 @@ async def on_message(message):
                             await bot.send_message(message.channel, 'Vote has failed')
                     else:
                         await bot.send_message(message.channel, 'A vote is already in progress')
-
+            #NOTTESTED
+            #Commands that work when betting is in progress
             if re.search(r'raise [0-9]+$',command):
                 if bettingInProgress:
                     if message.author == table[playerTurn]:
@@ -208,19 +240,25 @@ async def on_message(message):
                                 if all( value == max(playerAmount) for value in playerAmount.values()):
                                     bettingInProgress = 0
                                     nextRound = 1
+                                    playerTurn = table[bigBlindPos]
                                 else:
                                     playerTurn += playerTurn % len(table)
                             else:
                                 await bot.send_message(message.channel, 'Not a raise')
                         else:
                             await bot.send_message(message.channel, 'Your too poor for that')
-
+            #NOTTESTED
             if command == 'check':
                 if bettingInProgress:
                     if message.author == table[playerTurn]:
                         if playerAmount[message.author] == max(playerAmount):
-                            playerTurn += playerTurn % len(table)
-
+                            if all( value == max(playerAmount) for value in playerAmount.values()):
+                                bettingInProgress = 0
+                                nextRound = 1
+                                playerTurn = table[bigBlindPos]
+                            else:
+                                playerTurn += playerTurn % len(table)
+            #NOTTESTED
             if command = 'call':
                 if bettingInProgress:
                     if message.author == table[playerTurn]:
@@ -232,21 +270,10 @@ async def on_message(message):
                             if all( value == max(playerAmount) for value in playerAmount.values()):
                                     bettingInProgress = 0
                                     nextRound = 1
+                                    playerTurn = table[bigBlindPos]
                             else:
                                 playerTurn += playerTurn % len(table)
                         else:
                             await bot.send_message(message.channel, 'Your too poor for that')                       
-
-            if command == 'nextRound':
-
-
-            if command == 'viewPlayers':
-                if isGame:
-                    sendPlayers = ''
-                    for player,money in players.items():
-                        sendPlayers = sendPlayers + player.display_name + ' ' + str(money) + '\n'
-                    await bot.send_message(message.channel,sendPlayers)
-                else:
-                    await bot.send_message(message.channel,'Game has not been started, use command playPoker to start.')
 
 bot.run(token)
