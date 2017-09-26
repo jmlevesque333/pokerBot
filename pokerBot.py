@@ -19,6 +19,9 @@ isGame = 0
 isRound = 0
 nextRound = 0
 voteInProgress = 0
+votemessage = None
+voted = []
+emojis = []
 bettingInProgress = 0
 playerTurn = 1
 players = {}
@@ -79,9 +82,9 @@ async def setupPoker():
     while(blindNotSet):
         if players(table[bigBlindPos]) < bigBlind:
             players.pop(table[bigBlindPos], None)
-            removedPlayer = table.pop(bigBlindPos) 
+            removedPlayer = table.pop(bigBlindPos)
         else:
-            blindNotSet = 0 
+            blindNotSet = 0
 
 async def playPokerRound(roundNumber):
     global bigBlind
@@ -138,7 +141,7 @@ async def on_ready():
 async def on_reaction_add(reaction, user):
 	global voteInProgress, voted, votemessage, emojis, bigBlind, smallBlind
 	if voteInProgress and reaction.message.id == votemessage.id and user.id not in voted and user != bot.user and (reaction.emoji == u"\U0001F44D" or reaction.emoji == u"\U0001F44E"):
-		if len(voted) < 0:	
+		if len(voted) < 0:
 			emojis.append(reaction.emoji)
 			voted.append(user.id)
 		else:
@@ -211,7 +214,7 @@ async def on_message(message):
                     if not isRound:
                         #if len(players) > 1:
                         shuffle(cardList)
-                        isRound = 1 
+                        isRound = 1
                         await playRound()
                         #else:
                             #await bot.send_message(message.channel, 'Not enough players in the lobby.' + '\n' +
@@ -301,7 +304,7 @@ async def on_message(message):
                             else:
                                 playerTurn += playerTurn % len(table)
                         else:
-                            await bot.send_message(message.channel, 'Your too poor for that')      
+                            await bot.send_message(message.channel, 'Your too poor for that')
 
             if command == 'fold':
                 if bettingInProgress:
