@@ -135,6 +135,26 @@ async def on_ready():
     print('------')
 
 @bot.event
+async def on_reaction_add(reaction, user):
+	global voteInProgress, voted, votemessage, emojis, bigBlind, smallBlind
+	if voteInProgress and reaction.message.id == votemessage.id and user.id not in voted and user != bot.user and (reaction.emoji == u"\U0001F44D" or reaction.emoji == u"\U0001F44E"):
+		if len(voted) < 0:	
+			emojis.append(reaction.emoji)
+			voted.append(user.id)
+		else:
+			emojis.append(reaction.emoji)
+			results = emojis.count(u"\U0001F44D")-emojis.count(u"\U0001F44E")
+			print(results)
+			#await bot.send_message(reaction.message.channel, "Vote results: " + str(results))
+			voting = False
+			if result > 0:
+                            await bot.send_message(message.channel, 'Big blind has been set to ' + srt(bigBlind) + ' and small blind has been set to ' + str(smallBlind) + '.')
+                        else:
+                            await bot.send_message(message.channel, 'Vote has failed')
+                            bigBlind = 0
+                            smallBlind = 0
+
+@bot.event
 async def on_message(message):
     global isGame
     global isRound
@@ -147,7 +167,7 @@ async def on_message(message):
     global hands
     global bigBlind
     global smallBlind
-    global voteInProgress
+    global voteInProgress, voted, votemessage, emojis
     if message.author.id != bot.user.id:
         if message.content[0] == command_prefix:
             command = message.content[1:]
@@ -223,16 +243,14 @@ async def on_message(message):
             if re.search(r'setBlind [0-9]+$',command):
                 if isGame:
                     if not voteInProgress:
+                        bigBlind = re.search(r'\d+$',command)
+                        smallBlind = math.floor(bigBlind/2)
                         voteInProgress = 1
-                        start = time.time()
-                        while(time.time() - start < 30):
-                            #TODO
-                        if result > 0:
-                            bigBlind = re.search(r'\d+$',command)
-                            smallBlind = math.floor(bigBlind/2)
-                            await bot.send_message(message.channel, 'Big blind has been set to ' + srt(bigBlind) + ' and small blind has been set to ' + str(smallBlind) + '.')
-                        else:
-                            await bot.send_message(message.channel, 'Vote has failed')
+			voted = []
+			emojis = []
+			votemessage = await bot.send_message(message.channel, "Set blind to " + str(bigBlind) + "?")
+			await bot.add_reaction(votemessage, u"\U0001F44D")
+			await bot.add_reaction(votemessage, u"\U0001F44E")
                     else:
                         await bot.send_message(message.channel, 'A vote is already in progress')
             #NOTTESTED
