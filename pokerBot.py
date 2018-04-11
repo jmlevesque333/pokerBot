@@ -22,13 +22,15 @@ isGame = []
 isRound = []
 nextRound = []
 firstRound = []
+firstGame = []
 voteInProgress = []
-voteMessage = []
+voteMessages = []
 voted = []
 emojis = []
 bettingInProgress = []
 playerTurn = []
 players = []
+plays = []
 table = []
 playerAmount = []
 hands = []
@@ -52,7 +54,7 @@ async def evaluateHand(whichServer):
     global hands
     global board
     global isRound
-    global firstRound
+    global firstGame
     global players
     global pot
     finalBoard = []
@@ -60,14 +62,12 @@ async def evaluateHand(whichServer):
     handWinner = []
     max = 100000
     eval = Evaluator()
-    #TODO make new tuple of new string in card
     for card in board[whichServer]:
         temp1 = card[1].replace('10', 'T')
         temp2 = card[0].lower()
         temp3 = Card.new(temp1[0]+temp2[0])
         finalBoard.append(temp3)
 
-    #TODO make new tuple of new string in card
     for p in table[whichServer]:
         for card in hands[whichServer][p]:
             temp1 = card[1].replace('10', 'T')
@@ -91,7 +91,7 @@ async def evaluateHand(whichServer):
     for winners in handWinner:
         players[whichServer][winners] += pot[whichServer]
         await bot.send_message(pokerChannel[whichServer], winners.display_name + " won the round! They won "+ str(pot[whichServer]) +"$. Use command startPoker to start another one!")
-    firstRound[whichServer] = 0
+    firstGame[whichServer] = 0
     pot[whichServer] = 0
     isRound[whichServer] = 0
 
@@ -134,6 +134,8 @@ async def setupPoker(whichServer):
     global table
     global playerAmount
     global pokerChannel
+    global playerTurn
+    global playerAmount
     for player in table[whichServer]:
         playerAmount[whichServer][player] = 0
     random.shuffle(table[whichServer])
@@ -144,18 +146,20 @@ async def setupPoker(whichServer):
             removedPlayer = table[whichServer].pop(bigBlindPos[whichServer])
         else:
             blindNotSet = 0
+    playerTurn[whichServer] = smallBlindPos[whichServer]
+    for player in table[whichServer]:
+        playerAmount[whichServer][player] = 0
     await bot.send_message(pokerChannel[whichServer], "Big blind is " + table[whichServer][bigBlindPos[whichServer]].display_name)
     await bot.send_message(pokerChannel[whichServer], "Small blind is " + table[whichServer][smallBlindPos[whichServer]].display_name)
-#TODO
+
 async def startNewGame(whichServer):
     global isRound
     isRound[whichServer] = 0
     global nextRound
     nextRound[whichServer] = 0
     global playerAmount
-    playerAmount[whichServer] = {}
     global playerTurn
-    playerTurn[whichServer] = 0 
+    playerTurn[whichServer] = 0
     global pot
     pot[whichServer] = 0
     global hands
@@ -167,6 +171,8 @@ async def startNewGame(whichServer):
     isTurnTable[whichServer] = 0
     global table
     global players
+    global plays
+    plays[whichServer] = 0
     global bettingInProgress
     bettingInProgress[whichServer] = 0
     global cardList
@@ -186,9 +192,11 @@ async def startNewGame(whichServer):
             ('Clubs', '7'),('Clubs', '8'),('Clubs', '9'),('Clubs', '10'),('Clubs', 'Jack'),
             ('Clubs', 'Queen'),('Clubs', 'King'),('Clubs', 'Ace')] 
     random.shuffle(cardList[whichServer])
-    bigBlindPos[whichServer] = (bigBlindPos[whichServer] +1) % (len(table[whichServer]))
-    smallBlindPos[whichServer] = (smallBlindPos[whichServer] + 1) % (len(table[whichServer]))
-    playerTurn[whichServer] = bigBlindPos[whichServer]
+    bigBlindPos[whichServer] = ((bigBlindPos[whichServer] +1) % (len(table[whichServer])))
+    smallBlindPos[whichServer] = ((smallBlindPos[whichServer] + 1) % (len(table[whichServer])))
+    playerTurn[whichServer] = smallBlindPos[whichServer]
+    for player in table[whichServer]:
+        playerAmount[whichServer][player] = 0
     for player in hands[whichServer]:
         hands[whichServer][player] = []
 
@@ -199,12 +207,16 @@ async def showMoney(player, moneyRemaining, bettingAmount, whichServer):
 async def playPokerRound(roundNumber, whichServer):
     global bigBlind
     global smallBlind
+    global bigBlindPos
+    global smallBlindPos
     global table
     global playerAmount
+    global plays
     global bettingInProgress
     global pot
     global nextRound
     nextRound[whichServer] = 0
+    plays[whichServer] = 0
     if roundNumber == 0:
         players[whichServer][table[whichServer][bigBlindPos[whichServer]]] -= bigBlind[whichServer]
         playerAmount[whichServer][table[whichServer][bigBlindPos[whichServer]]] = bigBlind[whichServer]
@@ -276,7 +288,7 @@ async def playNextRound(whichServer):
 
 @bot.event
 async def on_ready():
-    global servers, isGame, isRound, nextRound, firstRound, voteInProgress, voteMessage, voted, emojis, bettingInProgress, playerTurn, players, tabe, playerAmount, hands, board, pokerRole, pokerChannel, bigBlind, bigBlindPos, smallBlind, smallBlindPos, result, pot, bettingRoundAMount, isTurnTable
+    global servers, isGame, isRound, nextRound, firstRound, firstGame,voteInProgress, voteMessages, voted, emojis, bettingInProgress, playerTurn, players, table, playerAmount, hands, board, pokerRole, pokerChannel, bigBlind, bigBlindPos, smallBlind, smallBlindPos, result, pot, bettingRoundAMount, isTurnTable
     print('Logged in as')
     print(bot.user.name)
     print(bot.user.id)
@@ -287,13 +299,15 @@ async def on_ready():
         isRound.append(0)
         nextRound.append(0)
         firstRound.append(1)
+        firstGame.append(1)
         voteInProgress.append(0)
-        voteMessage.append(None)
+        voteMessages.append(None)
         voted.append([])
         emojis.append([])
         bettingInProgress.append(0)
         playerTurn.append(0)
         players.append({})
+        plays.append(0)
         table.append([])
         playerAmount.append({})
         hands.append(defaultdict(list))
@@ -321,39 +335,40 @@ async def on_ready():
             ('Clubs', '7'),('Clubs', '8'),('Clubs', '9'),('Clubs', '10'),('Clubs', 'Jack'),
             ('Clubs', 'Queen'),('Clubs', 'King'),('Clubs', 'Ace')])
 
-@bot.event
+@bot.event ########bigBlind[whichServer] = int(re.search(r'\d+$',command).group())
+                  ##      smallBlind[whichServer] = math.floor(bigBlind[whichServer]/2)
 async def on_reaction_add(reaction, user):
-    global voteInProgress, servers, voted, voteMessage, emojis, bigBlind, smallBlind, result, players
+    global voteInProgress, servers, voted, voteMessages, emojis, bigBlind, smallBlind, result, players
     whichServer = None
     for i, server in enumerate(servers):
         if reaction.message.server == server:
             whichServer = i
-    if voteInProgress[whichServer] and reaction.message.id == voteMessage.id and user.id not in voted[whichServer] and user != bot.user and (reaction.emoji == u"\U0001F44D" or reaction.emoji == u"\U0001F44E"):
+    if voteInProgress[whichServer] and reaction.message.id == voteMessages[whichServer].id and user.id not in voted[whichServer] and user != bot.user and (reaction.emoji == u"\U0001F44D" or reaction.emoji == u"\U0001F44E"):
         if len(voted[whichServer]) < len(players[whichServer])-1:
             emojis[whichServer].append(reaction.emoji)
             voted[whichServer].append(user.id)
         else:
             emojis[whichServer].append(reaction.emoji)
             result = emojis[whichServer].count(u"\U0001F44D")-emojis[whichServer].count(u"\U0001F44E")
-            #await bot.send_message(reaction.message.channel, "Vote results: " + str(results))
             voteInProgress[whichServer] = 0
             if result > 0:
-                await bot.send_message(voteMessage.channel, 'Big blind has been set to ' + str(bigBlind[whichServer]) + ' and small blind has been set to ' + str(smallBlind[whichServer]) + '.')
+                await bot.send_message(voteMessages[whichServer].channel, 'Big blind has been set to ' + str(bigBlind[whichServer]) + ' and small blind has been set to ' + str(smallBlind[whichServer]) + '.')
             else:
-                await bot.send_message(voteMessage.channel, 'Vote has failed')
+                await bot.send_message(voteMessages[whichServer].channel, 'Vote has failed')
                 bigBlind[whichServer] = 0
                 smallBlind[whichServer] = 0
 
 @bot.event
 async def on_server_join(server):
-    global servers
+    global servers, isGame, isRound, nextRound, firstRound, firstGame,voteInProgress, voteMessages, voted, emojis, bettingInProgress, playerTurn, players, table, playerAmount, hands, board, pokerRole, pokerChannel, bigBlind, bigBlindPos, smallBlind, smallBlindPos, result, pot, bettingRoundAMount, isTurnTable
     servers.append(server)
     isGame.append(0)
     isRound.append(0)
     nextRound.append(0)
     firstRound.append(1)
+    firstGame.append(1)
     voteInProgress.append(0)
-    voteMessage.append(None)
+    voteMessages[whichServer].append(None)
     voted.append([])
     emojis.append([])
     bettingInProgress.append(0)
@@ -391,17 +406,22 @@ async def on_message(message):
     global isGame
     global isRound
     global nextRound
+    global firstGame
+    global firstRound
     global players
     global playerAmount
     global playerTurn
+    global plays
     global pot
     global pokerRole
     global pokerChannel
     global hands
     global bigBlind
     global smallBlind
+    global bigBlindPos
+    global smallBlindPos
     global bettingInProgress
-    global voteInProgress, voted, voteMessage, emojis
+    global voteInProgress, voted, voteMessages, emojis
     global isTurnTable
     whichServer = None
     for i, server in enumerate(servers):
@@ -410,7 +430,10 @@ async def on_message(message):
     if message.author.id != bot.user.id:
         if message.content[0] == command_prefix:
             command = message.content[1:]
-
+            print('----on_message----')
+            print("bigBlindPos" + str(bigBlindPos[whichServer]))
+            print("smallBlindPos" + str(smallBlindPos[whichServer]))
+            print("playerTurn" + str(playerTurn[whichServer]))
             if command == 'playPoker':
                 if isGame[whichServer]:
                     await bot.send_message(message.channel,'Games already being played. Game can be restarted with command restart.')
@@ -423,12 +446,6 @@ async def on_message(message):
                             pokerChannel[whichServer] = chnnl
                     if chnnlFlag == 0:
                         pokerChannel[whichServer] = await bot.create_channel(message.server, 'pokerchannel')
-                    #pokerRole = await bot.create_role(message.server)
-                    #await bot.edit_role(message.server, pokerRole, name = 'pokerPlayer')
-                    #pokerPlayerPerms = discord.PermissionOverwrite(read_messages=False)
-                    #everyoneElsePerms = discord.PermissionOverwrite(read_messages=True)
-                    #pokerPlayers = discord.ChannelPermissions(target=pokerRole, overwrite=pokerPlayerPerms)
-                    #everyoneElse = discord.ChannelPermissions(target=message.server.default_role, overwrite=everyoneElsePerms)
                     await bot.send_message(pokerChannel[whichServer],'Game is about to start, use command join to join the fun!')
 
             if command == 'stopPoker':
@@ -437,8 +454,6 @@ async def on_message(message):
                     isRound[whichServer] = 0
                     bettingInProgress[whichServer] = 0
                     voteInProgress[whichServer] = 0
-                    #await bot.delete_channel(pokerChannel)
-                    #await bot.delete_role(message.server, pokerRole)
                     await bot.send_message(message.channel, "Game has been stopped.")
                 else:
                     await bot.send_message(message.channel, "No game in progress.")
@@ -447,10 +462,12 @@ async def on_message(message):
                 if isGame[whichServer]:
                     if not message.author in players[whichServer]:
                         if not isRound[whichServer]:
-                            players[whichServer][message.author] = 3000
-                            table[whichServer].append(message.author)
-                            #await bot.add_roles(message.author, pokerRole)
-                            await bot.send_message(message.channel,'You have been added to the game!')
+                            if len(players[whichServer]) < 8: 
+                                players[whichServer][message.author] = 3000
+                                table[whichServer].append(message.author)
+                                await bot.send_message(message.channel,'You have been added to the game!')
+                            else:
+                                await bot.send_message(message.channel,'The table is only big enough for 8 players.')
                         else:
                             players[whichServer][message.author] = 3000
                             await bot.send_message(message.channel,'You have been added to the queue, you will be included in the next game')
@@ -463,8 +480,7 @@ async def on_message(message):
                 if isGame[whichServer]:
                     if not isRound[whichServer]:
                         if len(players[whichServer]) > 1:
-                            
-                            if firstRound[whichServer]:
+                            if firstGame[whichServer]:
                                 random.shuffle(cardList[whichServer])
                                 await setupPoker(whichServer)
                             else:
@@ -489,30 +505,38 @@ async def on_message(message):
                 else:
                     await bot.send_message(message.channel,'Game has not been started, use command playPoker to start.')
 
-            #if command == 'nextRound': #TODO make it so that you dont have to type nextRound
-                '''if nextRound[whichServer] == 1:
-                    if len(board[whichServer]) < 3:
-                        await playPokerRound(1, whichServer)
-                    elif len(board[whichServer]) < 4:
-                        await playPokerRound(2, whichServer)
-                    elif len(board[whichServer]) < 5:
-                        await playPokerRound(3, whichServer)
-                    elif len(board[whichServer]) == 5:
-                        await playPokerRound(4, whichServer)
-'''
+            if command == "help":
+                await bot.send_message(message.author,  'These are the commands that can be used to interact with the bot:\n' +
+                                                '?playPoker to start a poker lobby, only one poker lobby can be active in anyone server at a time\n' +
+                                                '?join to join said lobby\n' +
+                                                '?startPoker to start the game of poker once atleast 2 players have joined the lobby\n' +
+                                                '?setBLind 50 will set the big blind to 50 and the small blind to half of the big blind. You can input any payable amount of money as the blind. You will need to vote for the blind using reactions.\n' +
+                                                '?viewPlayers will show you the players at the table.\n' +
+                                                'Once the game has started you can play with these 4 commands:\n' +
+                                                '   ?check\n' +
+                                                '   ?raise 50 (can be any number aslong has you have the money to pay)\n' +
+                                                '   ?call\n' +
+                                                '   ?fold\n')
+                await bot.send_message(message.channel, 'I sent you a pm with the commands my lord.')
+
             if re.search(r'setBlind [0-9]+$',command):
                 if isGame[whichServer]:
                     if not voteInProgress[whichServer]:
-                        bigBlind[whichServer] = int(re.search(r'\d+$',command).group())
-                        smallBlind[whichServer] = math.floor(bigBlind[whichServer]/2)
                         voteInProgress[whichServer] = 1
                         voted[whichServer] = []
                         emojis[whichServer] = []
-                        voteMessage = await bot.send_message(message.channel, "Set blind to " + str(bigBlind[whichServer]) + "?")
-                        await bot.add_reaction(voteMessage, u"\U0001F44D")
-                        await bot.add_reaction(voteMessage, u"\U0001F44E")
+                        voteMessages[whichServer] = await bot.send_message(message.channel, "Set blind to " + str(bigBlind[whichServer]) + "?")
+                        await bot.add_reaction(voteMessages[whichServer], u"\U0001F44D")
+                        await bot.add_reaction(voteMessages[whichServer], u"\U0001F44E")
                     else:
                         await bot.send_message(message.channel, 'A vote is already in progress')
+
+            if command == "cancelVote":
+                if voteInProgress[whichServer]:
+                    voteInProgress[whichServer] = 0
+                    await bot.send_message(message.channel, 'vote has been canceled')
+                else:
+                    await bot.send_message(message.channel, 'no vote in progress')
 
             #Commands that work when betting is in progress
             if re.search(r'raise [0-9]+$',command):
@@ -524,7 +548,12 @@ async def on_message(message):
                                 players[whichServer][message.author] -= raisedAmount
                                 playerAmount[whichServer][message.author] += raisedAmount
                                 pot[whichServer] += raisedAmount
-                                if ((playerTurn[whichServer] + 1) % (len(table[whichServer]))) == bigBlindPos[whichServer]:
+                                plays[whichServer] += 1
+                                print("plays")
+                                print(plays[whichServer])
+                                print("table")
+                                print(len(table[whichServer]))
+                                if plays[whichServer] >= len(table[whichServer]):
                                     isTurnTable[whichServer] = 1
                                 await showMoney(table[whichServer][playerTurn[whichServer]], players[whichServer][table[whichServer][playerTurn[whichServer]]], playerAmount[whichServer][table[whichServer][playerTurn[whichServer]]], whichServer)
                                 if all( value == max(playerAmount[whichServer].values()) for value in playerAmount[whichServer].values()) and isTurnTable[whichServer]:
@@ -532,6 +561,7 @@ async def on_message(message):
                                     nextRound[whichServer] = 1
                                     playerTurn[whichServer] = bigBlindPos[whichServer]
                                     isTurnTable[whichServer] = 0
+                                    firstRound[whichServer] = 0
                                     await bot.send_message(message.channel, 'Round is over, next one starting now.')
                                     await playNextRound(whichServer)
                                 else:
@@ -544,23 +574,32 @@ async def on_message(message):
                             await bot.send_message(message.channel, 'Your too poor for that')
                     else:
                         await bot.send_message(message.channel, "Wait for your turn. Jeez.") 
-
+            
             if command == 'check':
                 if bettingInProgress[whichServer]:
                     if message.author == table[whichServer][playerTurn[whichServer]]:
+                        print('----check----')
+                        print("bigBlindPos" + str(bigBlindPos[whichServer]))
+                        print("smallBlindPos" + str(smallBlindPos[whichServer]))
+                        print("playerTurn" + str(playerTurn[whichServer]))
                         if playerAmount[whichServer][message.author] == max(playerAmount[whichServer].values()):
-                            if ((playerTurn[whichServer] + 1) % (len(table[whichServer]))) == bigBlindPos[whichServer]:
+                            plays[whichServer] += 1
+                            print("plays")
+                            print(plays[whichServer])
+                            print("table")
+                            print(len(table[whichServer]))
+                            if plays[whichServer] >= len(table[whichServer]):
                                 isTurnTable[whichServer] = 1
                             await showMoney(table[whichServer][playerTurn[whichServer]], players[whichServer][table[whichServer][playerTurn[whichServer]]], playerAmount[whichServer][table[whichServer][playerTurn[whichServer]]], whichServer)
                             if all( value == max(playerAmount[whichServer].values()) for value in playerAmount[whichServer].values()) and isTurnTable[whichServer]:
                                 bettingInProgress[whichServer] = 0
                                 nextRound[whichServer] = 1
-                                playerTurn[whichServer] = bigBlindPos[whichServer]
                                 isTurnTable[whichServer] = 0
+                                firstRound[whichServer] = 0
                                 await bot.send_message(message.channel, 'Round is over, next one starting now.')
                                 await playNextRound(whichServer)
                             else:
-                                playerTurn[whichServer] = (playerTurn[whichServer] + 1) % (len(table[whichServer]))
+                                playerTurn[whichServer] = ((playerTurn[whichServer] + 1) % (len(table[whichServer])))
                                 await bot.send_message(message.channel, message.author.display_name + ' has checked.')
                                 await bot.send_message(message.channel, "It's now " + table[whichServer][playerTurn[whichServer]].display_name + "'s turn.")
                         else:
@@ -568,15 +607,24 @@ async def on_message(message):
                     else:
                         await bot.send_message(message.channel, "Wait for your turn. Jeez.")
 
-            if command == 'call':
+            if command == 'call': # doesnt stop when someone call
                 if bettingInProgress[whichServer]:
                     if message.author == table[whichServer][playerTurn[whichServer]]:
+                        print('----call----')
+                        print("bigBlindPos" + str(bigBlindPos[whichServer]))
+                        print("smallBlindPos" + str(smallBlindPos[whichServer]))
+                        print("playerTurn" + str(playerTurn[whichServer]))
                         raisedAmount = max(playerAmount[whichServer].values()) - playerAmount[whichServer][message.author]
                         if raisedAmount <= players[whichServer][message.author]:
                             players[whichServer][message.author] -= raisedAmount
                             playerAmount[whichServer][message.author] += raisedAmount
                             pot[whichServer] += raisedAmount
-                            if ((playerTurn[whichServer] + 1) % (len(table[whichServer]))) == bigBlindPos[whichServer]:
+                            plays[whichServer] += 1
+                            print("plays")
+                            print(plays[whichServer])
+                            print("table")
+                            print(len(table[whichServer]))
+                            if plays[whichServer] >= len(table[whichServer]):
                                 isTurnTable[whichServer] = 1
                             await showMoney(table[whichServer][playerTurn[whichServer]], players[whichServer][table[whichServer][playerTurn[whichServer]]], playerAmount[whichServer][table[whichServer][playerTurn[whichServer]]], whichServer)
                             if all( value == max(playerAmount[whichServer].values()) for value in playerAmount[whichServer].values()) and isTurnTable[whichServer]:
@@ -584,6 +632,7 @@ async def on_message(message):
                                 nextRound[whichServer] = 1
                                 playerTurn[whichServer] = bigBlindPos[whichServer]
                                 isTurnTable[whichServer] = 0
+                                firstRound[whichServer] = 0
                                 await bot.send_message(message.channel, 'Round is over, next one starting now.')
                                 await playNextRound(whichServer)
                             else:
@@ -599,20 +648,39 @@ async def on_message(message):
                 if bettingInProgress[whichServer]:
                     if message.author == table[whichServer][playerTurn[whichServer]]:
                         name = table[whichServer][playerTurn[whichServer]].display_name
+                        print(len(hands[whichServer]))
+                        print(len(table[whichServer]))
                         del hands[whichServer][table[whichServer][playerTurn[whichServer]]]
                         del table[whichServer][playerTurn[whichServer]]
-                        if ((playerTurn[whichServer] + 1) % (len(table[whichServer]))) == bigBlindPos[whichServer]:
-                            isTurnTable[whichServer] = 1
-                        if all( value == max(playerAmount[whichServer].values()) for value in playerAmount[whichServer].values()) and isTurnTable:
+                        if len(table[whichServer]) == 1:
+                            players[whichServer][table[whichServer][0]] += pot[whichServer]
+                            await bot.send_message(pokerChannel[whichServer], table[whichServer][0].display_name + " won the round! They won "+ str(pot[whichServer]) +"$. Use command startPoker to start another one!")
                             bettingInProgress[whichServer] = 0
-                            nextRound[whichServer] = 1
-                            playerTurn[whichServer] = bigBlindPos[whichServer]
-                            isTurnTable[whichServer] = 0
-                            await bot.send_message(message.channel, name + ' has been removed from the table. Next round will start.')
-                            await playNextRound(whichServer)
+                            firstGame[whichServer] = 0
+                            pot[whichServer] = 0
+                            isRound[whichServer] = 0
                         else:
-                            playerTurn[whichServer] = (playerTurn[whichServer] + 1) % (len(table[whichServer]))
-                            await bot.send_message(message.channel, name + " has been removed from the table\nIt's now " + table[whichServer][playerTurn[whichServer]].display_name + "'s turn.")
+                            print("plays")
+                            print(plays[whichServer])
+                            print("table")
+                            print(len(table[whichServer]))
+                            print("isTurnTable")
+                            print(isTurnTable)
+                            if plays[whichServer] >= len(table[whichServer]):
+                                isTurnTable[whichServer] = 1
+                            print("isTurnTable")
+                            print(isTurnTable)
+                            if all( value == max(playerAmount[whichServer].values()) for value in playerAmount[whichServer].values()) and isTurnTable[whichServer]:
+                                bettingInProgress[whichServer] = 0
+                                nextRound[whichServer] = 1
+                                playerTurn[whichServer] = bigBlindPos[whichServer]
+                                isTurnTable[whichServer] = 0
+                                firstRound[whichServer] = 0
+                                await bot.send_message(message.channel, name + ' has been removed from the table. Next round will start.')
+                                await playNextRound(whichServer)
+                            else:
+                                playerTurn[whichServer] = (playerTurn[whichServer] + 1) % (len(table[whichServer]))
+                                await bot.send_message(message.channel, name + " has been removed from the table\nIt's now " + table[whichServer][playerTurn[whichServer]].display_name + "'s turn.")
                     else:
                         await bot.send_message(message.channel, "Wait for your turn. Jeez.")
 
