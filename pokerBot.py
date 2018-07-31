@@ -16,7 +16,7 @@ There are a number of utility commands being showcased here.'''
 bot = discord.Client()
 command_prefix = '?'
 
-token = 'MzYwNzczMzA5MjA3NDEyNzQ3.DKab4A.lFqitkifVbqtioZi6Yj6Y9JtQcU'
+token = ''
 
 isGame = []
 isRound = []
